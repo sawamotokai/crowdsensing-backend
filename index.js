@@ -3,11 +3,12 @@ const {sortByDistance, } = require("./utils");
 const app = express()
 const port = process.env.PORT || 3000
 app.use(express.json());
+require('dotenv').config();
 
 
 const mongodb = require('mongodb');
 const MongoClient = mongodb.MongoClient;
-const uri = "mongodb+srv://test:test@cluster0.gvxp9.mongodb.net/myFirstDatabase?retryWrites=true&w=majority";
+const uri = process.env.MONGODB_URI;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 client.connect();
 
@@ -59,6 +60,7 @@ app.get('/tasks/near', async (req, res) => {
       throw err;
     });
   } catch (e) {
+    console.log(e)
     console.error(e);
     return res.status(400).json(e);
   } finally {
