@@ -56,6 +56,7 @@ app.get('/tasks/near', async (req, res) => {
     ]).toArray();
   } catch (e) {
     console.error(e);
+    return res.status(400).json(e);
   } finally {
     return res.status(200).json({
       data: {
