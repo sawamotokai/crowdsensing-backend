@@ -14,17 +14,14 @@ client.connect();
 // /getCompletionRateOfTasks
 app.get('/', async (req, res) => {
   try {
-    await client.connect();
+    // await client.connect();
     console.log('connected...')
     const collection = client.db("ar").collection("users");
     var some = await collection.findOne();
   } catch (err) {
     console.error(err);
   } finally {
-    client.close();
-    console.log('closed...')
-    console.log(some)
-    return res.json(some);
+    return res.send('hey ho');
   }
 })
 
