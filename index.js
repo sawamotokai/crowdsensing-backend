@@ -29,10 +29,11 @@ app.get('/', async (req, res) => {
 app.get('/tasks/near', async (req, res) => {
   try {
     const {query} = req;
-    console.log('connected...')
     // get nearest trashbins
     const trashbinCollection = client.db("ar").collection("trashbins");
-    const trashbins = await trashbinCollection.find().toArray();
+    const trashbins = await trashbinCollection.find().toArray().catch(err => {
+      throw err;
+    });
     const trashbins_nearest10 = sortByDistance(query.lat, query.lng, trashbins).slice(0, 10);
     const taskCollection = client.db("ar").collection("tasks");
     const queryList = trashbins_nearest10.map(trashbin => String(trashbin._id));
@@ -54,7 +55,9 @@ app.get('/tasks/near', async (req, res) => {
         ],
         as: "reward"
       }}, { $unwind: "$reward" },
-    ]).toArray();
+    ]).toArray().catch(err => {
+      throw err;
+    });
   } catch (e) {
     console.error(e);
     return res.status(400).json(e);
