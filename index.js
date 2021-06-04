@@ -12,14 +12,15 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 client.connect();
 
 // /getCompletionRateOfTasks
+
 app.get('/', async (req, res) => {
   try {
-    // await client.connect();
     console.log('connected...')
     const collection = client.db("ar").collection("users");
     var some = await collection.findOne();
   } catch (err) {
     console.error(err);
+    return res.status(400).json(e);
   } finally {
     return res.send('hey ho');
   }
