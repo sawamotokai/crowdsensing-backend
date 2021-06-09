@@ -52,4 +52,11 @@ router.get('/near', async (req, res) => {
 })
 
 
+router.post('/complete', (req, res) => {
+  const {body} = req;
+  console.log(body);
+  res.json(body);
+})
+
+
 module.exports = router;
