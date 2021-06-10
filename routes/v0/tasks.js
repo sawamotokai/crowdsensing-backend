@@ -58,7 +58,9 @@ router.post('/complete', async (req, res) => {
     console.log(body);
     const result = await client.db("ar").collection("completed").insertOne(body);
     console.log(result)
-    res.status(200).send(`New entry was created with the following id: ${result.insertedId}`);
+    res.status(200).json({
+      "msg": `New entry was created with the following id: ${result.insertedId}`
+    });
   } catch (e) {
     res.status(400).json({
       "msg": e
