@@ -6,6 +6,44 @@ const {sortByDistance, } = require("../../utils");
 client.connect();
 
 
+router.get('/all', async (req, res) => {
+  try {
+    const taskCollection = client.db("ar").collection("tasks");
+    var ret = await taskCollection.aggregate([{ 
+        $lookup: {
+          from: "trashbins",
+          let: {trashbinId: "$trashbinId", },
+          pipeline: [
+            { $match: { $expr: {$eq : ["$$trashbinId", {$toString: "$_id"}]}}},
+          ],
+          as: "trashbin"
+        },
+      }, { $unwind: "$trashbin" }, 
+      { $lookup: {
+        from: "rewards",
+        let: {rewardId: "$rewardId"},
+        pipeline: [
+          { $match: { $expr: { $eq: [{$toString: "$_id"}, "$$rewardId"] }}},
+        ],
+        as: "reward"
+      }}, { $unwind: "$reward" },
+    ]).toArray().catch(err => {
+      throw err;
+    });
+  } catch (e) {
+    console.log(e)
+    console.error(e);
+    return res.status(400).json(e);
+  } finally {
+    return res.status(200).json({
+      data: {
+        tasks: ret
+      }
+    });
+  }
+})
+
+
 router.get('/near', async (req, res) => {
   try {
     const {query} = req;
@@ -55,6 +93,7 @@ router.get('/near', async (req, res) => {
 router.post('/complete', async (req, res) => {
   try {
     const {body} = req;
+    body.currentTime = new Date()
     console.log(body);
     const result = await client.db("ar").collection("completed").insertOne(body);
     console.log(result)
@@ -67,6 +106,24 @@ router.post('/complete', async (req, res) => {
     })
   }
 })
+
+router.post("/new", async (req, res) => {
+  try {
+    const {body} = req;
+    console.log(body);
+    const result = await client.db("ar").collection("tasks").insertOne(body);
+    console.log(result)
+    res.status(200).json({
+      "msg": `New entry was created with the following id: ${result.insertedId}`
+    });
+  } catch (e) {
+    res.status(400).json({
+      "msg": e
+    })
+  }
+})
+
+
 
 
 module.exports = router;

@@ -7,5 +7,6 @@ router.use(function timeLog(req, res, next) {
 });
 
 router.use('/tasks', require('./tasks'));
+router.use('/users', require('./users'));
 
 module.exports = router;
