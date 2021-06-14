@@ -1,5 +1,7 @@
 require('dotenv').config();
+const { ObjectID } = require('bson');
 const express = require('express');
+const mongo = require('mongodb');
 const router = express.Router();
 const client = require('../../db');
 const {sortByDistance, } = require("../../utils");
@@ -123,9 +125,14 @@ router.post("/new", async (req, res) => {
   try {
     const {body} = req;
     console.log(body);
+    const existingUser = await client.db("ar").collection("users").findOne({"username": body.username});
+    if (existingUser != null) {
+      return res.status(400).json({
+        "msg": "User already exists"
+      });
+    }
     const result = await client.db("ar").collection("users").insertOne(body);
-    console.log(result)
-    res.status(200).json({
+    return res.status(200).json({
       "msg": `New users entry was created with the following id: ${result.insertedId}`
     });
   } catch (e) {
