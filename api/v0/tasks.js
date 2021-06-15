@@ -40,6 +40,20 @@ router.get("/all", async (req, res) => {
           },
         },
         { $unwind: "$reward" },
+        {
+          $lookup: {
+            from: "assigns",
+            let: { taskID: "$_id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: [{ $toString: "$$taskID" }, "$taskID"] },
+                },
+              },
+            ],
+            as: "assignment",
+          },
+        },
       ])
       .toArray()
       .catch((err) => {

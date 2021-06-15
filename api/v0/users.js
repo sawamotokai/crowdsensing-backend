@@ -37,7 +37,7 @@ router.get("/all", async (req, res) => {
                 },
               },
             ],
-            as: "assigned",
+            as: "assignment",
           },
         },
       ])
