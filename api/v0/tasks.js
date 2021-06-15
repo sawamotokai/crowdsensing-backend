@@ -136,7 +136,6 @@ router.get("/near", async (req, res) => {
  * @arg {Object} req.body
  * @arg {string} req.body.userID
  * @arg {string} req.body.taskID
- *
  */
 router.post("/assign", async (req, res) => {
   try {
@@ -150,7 +149,7 @@ router.post("/assign", async (req, res) => {
     };
     const result = await client.db("ar").collection("assigns").insertOne(doc);
     res.status(200).json({
-      msg: `Created a new entry with id: ${result.insertedId}`,
+      msg: `Created a new assigns entry with id: ${result.insertedId}`,
     });
   } catch (e) {
     console.error(e);
