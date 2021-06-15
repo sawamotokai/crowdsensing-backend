@@ -1,20 +1,19 @@
-const express = require('express')
-const app = express()
-const port = process.env.PORT || 3000
+const express = require("express");
+const app = express();
+const port = process.env.PORT || 3000;
 app.use(express.json());
-app.use('/api/v0', require('./routes/v0/v0'));
-
+app.use("/api/v0", require("./routes/v0/v0"));
 
 // /getCompletionRateOfTasks
 
-app.get('/', async (req, res) => {
+app.get("/", async (req, res) => {
   try {
   } catch (err) {
     console.error(err);
     return res.status(400).json(e);
   } finally {
-    return res.send('backend serving...');
+    return res.send("backend serving...");
   }
-})
+});
 
-app.listen(port, () => console.log(`Example app listening on port ${port}!`))
+app.listen(port, () => console.log(`Example app listening on port ${port}!`));
