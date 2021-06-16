@@ -229,7 +229,18 @@ router.post("/assign", async (req, res) => {
       assignedTime: new Date(),
       completedTime: null,
     };
-    const result = await client.db("ar").collection("assigns").insertOne(doc);
+    let result = await client.db("ar").collection("assigns").insertOne(doc);
+    let result2 = await client
+      .db("ar")
+      .collection("tasks")
+      .updateOne(
+        { _id: ObjectID(body.taskID) },
+        {
+          $set: {
+            lastUpdateTime: new Date(),
+          },
+        }
+      );
     res.status(200).json({
       msg: `Created a new assigns entry with id: ${result.insertedId}`,
     });
@@ -242,11 +253,11 @@ router.post("/assign", async (req, res) => {
 });
 
 // TODO: change to PUT method
-router.post("/complete", async (req, res) => {
+router.put("/complete", async (req, res) => {
   try {
     const { body } = req;
     console.log(body);
-    const result = await client
+    let result = await client
       .db("ar")
       .collection("assigns")
       .updateOne(
@@ -255,6 +266,17 @@ router.post("/complete", async (req, res) => {
           $set: {
             isCompleted: true,
             completedTime: new Date(),
+          },
+        }
+      );
+    let result2 = await client
+      .db("ar")
+      .collection("tasks")
+      .updateOne(
+        { _id: ObjectID(body.taskID) },
+        {
+          $set: {
+            lastUpdateTime: new Date(),
           },
         }
       );
@@ -268,9 +290,10 @@ router.post("/complete", async (req, res) => {
   }
 });
 
-router.post("/new", async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const { body } = req;
+    body.lastUpdateTime = new Date();
     const result = await client.db("ar").collection("tasks").insertOne(body);
     res.status(200).json({
       msg: `New entry was created with the following id: ${result.insertedId}`,
