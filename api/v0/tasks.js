@@ -1,9 +1,78 @@
 require("dotenv").config();
 const express = require("express");
+const { ObjectID } = require("mongodb");
 const router = express.Router();
 const client = require("../../db");
 const { sortByDistance } = require("../../utils");
 client.connect();
+
+router.get("/", async (req, res) => {
+  const { query } = req;
+  try {
+    const taskCollection = client.db("ar").collection("tasks");
+    var ret = await taskCollection
+      .aggregate([
+        { $match: { _id: ObjectID(query._id) } },
+        {
+          $lookup: {
+            from: "trashbins",
+            let: { trashbinId: "$trashbinId" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ["$$trashbinId", { $toString: "$_id" }] },
+                },
+              },
+            ],
+            as: "trashbin",
+          },
+        },
+        { $unwind: "$trashbin" },
+        {
+          $lookup: {
+            from: "rewards",
+            let: { rewardId: "$rewardId" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: [{ $toString: "$_id" }, "$$rewardId"] },
+                },
+              },
+            ],
+            as: "reward",
+          },
+        },
+        { $unwind: "$reward" },
+        {
+          $lookup: {
+            from: "assigns",
+            let: { taskID: "$_id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: [{ $toString: "$$taskID" }, "$taskID"] },
+                },
+              },
+            ],
+            as: "assignment",
+          },
+        },
+      ])
+      .toArray()
+      .catch((err) => {
+        throw err;
+      });
+  } catch (e) {
+    console.error(e);
+    return res.status(400).json(e);
+  } finally {
+    return res.status(200).json({
+      data: {
+        task: ret[0],
+      },
+    });
+  }
+});
 
 router.get("/all", async (req, res) => {
   try {
@@ -60,7 +129,6 @@ router.get("/all", async (req, res) => {
         throw err;
       });
   } catch (e) {
-    console.log(e);
     console.error(e);
     return res.status(400).json(e);
   } finally {
