@@ -241,6 +241,17 @@ router.post("/assign", async (req, res) => {
           },
         }
       );
+    let result3 = await client
+      .db("ar")
+      .collection("users")
+      .updateOne(
+        { _id: ObjectID(body.userID) },
+        {
+          $set: {
+            status: "busy",
+          },
+        }
+      );
     res.status(200).json({
       msg: `Created a new assigns entry with id: ${result.insertedId}`,
     });
@@ -256,7 +267,6 @@ router.post("/assign", async (req, res) => {
 router.put("/complete", async (req, res) => {
   try {
     const { body } = req;
-    console.log(body);
     let result = await client
       .db("ar")
       .collection("assigns")
@@ -277,6 +287,17 @@ router.put("/complete", async (req, res) => {
         {
           $set: {
             lastUpdateTime: new Date(),
+          },
+        }
+      );
+    let result3 = await client
+      .db("ar")
+      .collection("users")
+      .updateOne(
+        { _id: ObjectID(body.userID) },
+        {
+          $set: {
+            status: "idle",
           },
         }
       );

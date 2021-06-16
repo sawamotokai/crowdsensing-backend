@@ -95,6 +95,29 @@ router.get("/all", async (req, res) => {
   }
 });
 
+router.put("/wait_for_task", async (req, res) => {
+  try {
+    const { body } = req;
+    let result = await client
+      .db("ar")
+      .collection("users")
+      .updateOne(
+        { username: body.username },
+        {
+          $set: {
+            status: "waiting",
+          },
+        }
+      );
+    res.status(200).json({
+      msg: `Set the status of ${body.username} to waiting`,
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(400).json(e);
+  }
+});
+
 router.post("/new", async (req, res) => {
   try {
     const { body } = req;
