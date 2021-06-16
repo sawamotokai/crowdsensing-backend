@@ -101,7 +101,7 @@ router.put("/wait_for_task", async (req, res) => {
     let result = await client
       .db("ar")
       .collection("users")
-      .updateOne(
+      .updateone(
         { username: body.username },
         {
           $set: {
@@ -110,7 +110,7 @@ router.put("/wait_for_task", async (req, res) => {
         }
       );
     res.status(200).json({
-      msg: `Set the status of ${body.username} to waiting`,
+      msg: `set the status of ${body.username} to waiting`,
     });
   } catch (e) {
     console.error(e);
@@ -141,6 +141,31 @@ router.post("/new", async (req, res) => {
     res.status(400).json({
       msg: e,
     });
+  }
+});
+
+router.put("/location", async (req, res) => {
+  try {
+    const { body } = req;
+    const { username, lat, lng } = body;
+    let result = await client
+      .db("ar")
+      .collection("users")
+      .updateOne(
+        { username: username },
+        {
+          $set: {
+            "location.lat": lat,
+            "location.lng": lng,
+          },
+        }
+      );
+    res.status(200).json({
+      msg: `Set the location of ${username} to lat: ${lat} lng: ${lng}`,
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(400).json(e);
   }
 });
 
