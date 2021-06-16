@@ -98,7 +98,6 @@ router.get("/all", async (req, res) => {
 router.post("/new", async (req, res) => {
   try {
     const { body } = req;
-    console.log(body);
     const username = body.username.trim();
     const existingUser = await client
       .db("ar")
