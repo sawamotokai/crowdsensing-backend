@@ -53,7 +53,7 @@ router.get("/", async (req, res) => {
   } finally {
     return res.status(200).json({
       data: {
-        users: ret,
+        user: ret[0],
       },
     });
   }
@@ -101,7 +101,7 @@ router.put("/wait_for_task", async (req, res) => {
     let result = await client
       .db("ar")
       .collection("users")
-      .updateone(
+      .updateOne(
         { username: body.username },
         {
           $set: {
