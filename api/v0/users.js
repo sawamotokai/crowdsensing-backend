@@ -12,6 +12,7 @@ client.connect();
 class User {
   constructor() {
     this._id = "";
+    this.username = "";
     this.lastLoggedIn = Date();
     this.currentTaskId = "";
     // TODO: how to update user location periodically
@@ -24,18 +25,19 @@ class User {
 router.get("/", async (req, res) => {
   try {
     const { query } = req;
+    const { username } = query;
     const usersCollection = client.db("ar").collection("users");
     var ret = await usersCollection
       .aggregate([
-        { $match: { _id: ObjectID(query._id) } },
+        { $match: { username: username } },
         {
           $lookup: {
             from: "assigns",
-            let: { userID: "$_id" },
+            let: { username: "$username" },
             pipeline: [
               {
                 $match: {
-                  $expr: { $eq: [{ $toString: "$$userID" }, "$userID"] },
+                  $expr: { $eq: ["$$username", "$username"] },
                 },
               },
             ],
@@ -67,11 +69,11 @@ router.get("/all", async (req, res) => {
         {
           $lookup: {
             from: "assigns",
-            let: { userID: "$_id" },
+            let: { username: "$username" },
             pipeline: [
               {
                 $match: {
-                  $expr: { $eq: [{ $toString: "$$userID" }, "$userID"] },
+                  $expr: { $eq: ["$$username", "$username"] },
                 },
               },
             ],
@@ -122,16 +124,9 @@ router.get("/currentTask", async (req, res) => {
   try {
     const { query } = req;
     const { username } = query;
-    // get user id from the username
-    const user = await client
-      .db("ar")
-      .collection("users")
-      .findOne({ username: username });
-    const userID = String(user._id);
-
     // get task id of the assigned task
     const q = {
-      userID: userID,
+      username: username,
       isCompleted: false,
       isValid: true,
     };
@@ -193,7 +188,7 @@ router.get("/currentTask", async (req, res) => {
   }
 });
 
-router.post("/new", async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const { body } = req;
     const username = body.username.trim();

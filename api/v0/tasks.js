@@ -215,14 +215,14 @@ router.get("/near", async (req, res) => {
 
 /**
  * @arg {Object} req.body
- * @arg {string} req.body.userID
+ * @arg {string} req.body.username
  * @arg {string} req.body.taskID
  */
 router.post("/assign", async (req, res) => {
   try {
-    const { userID, taskID } = req.body;
+    const { username, taskID } = req.body;
     const doc = {
-      userID: userID,
+      username: username,
       taskID: taskID,
       isCompleted: false,
       assignedTime: new Date(),
@@ -247,7 +247,7 @@ router.post("/assign", async (req, res) => {
       .db("ar")
       .collection("users")
       .updateOne(
-        { _id: ObjectID(userID) },
+        { username: username },
         {
           $set: {
             status: "busy",
@@ -266,10 +266,12 @@ router.post("/assign", async (req, res) => {
 router.put("/complete", async (req, res) => {
   try {
     const { body } = req;
-    const { taskID, userID } = body;
+    const { taskID, username } = body;
     const assignment = await client.db("ar").collection("assigns").findOne({
       taskID: taskID,
-      userID: userID,
+      username: username,
+      isCompleted: false,
+      isValid: true,
     });
     const { assignedTime, isValid } = assignment;
     const timeElapsed = new Date() - assignedTime;
@@ -280,19 +282,26 @@ router.put("/complete", async (req, res) => {
         _id: ObjectID(taskID),
       });
     const { timeLimit } = task;
-    console.log(task);
-    console.log(timeLimit);
     if (timeElapsed / 60000 >= timeLimit) {
-      throw Error("Time limt exceeded for the task.");
+      return res.status(400).json({
+        msg: "Time limit exceeded for the task.",
+      });
     }
     if (!isValid) {
-      throw Error("The task was dismissed.");
+      return res.status(400).json({
+        msg: "The task was dismissed.",
+      });
     }
     let result = await client
       .db("ar")
       .collection("assigns")
       .updateOne(
-        { taskID: taskID, userID: userID },
+        {
+          taskID: taskID,
+          username: username,
+          isCompleted: false,
+          isValid: true,
+        },
         {
           $set: {
             isCompleted: true,
@@ -315,7 +324,7 @@ router.put("/complete", async (req, res) => {
       .db("ar")
       .collection("users")
       .updateOne(
-        { _id: ObjectID(userID) },
+        { username: username },
         {
           $set: {
             status: "idle",
@@ -323,7 +332,7 @@ router.put("/complete", async (req, res) => {
         }
       );
     res.status(200).json({
-      msg: `Modified ${result.modifiedCount} entry`,
+      msg: `Modified ${result.modifiedCount} entry ${result.result}`,
     });
   } catch (e) {
     res.status(400).json(e);
@@ -333,12 +342,17 @@ router.put("/complete", async (req, res) => {
 router.put("/dismiss", async (req, res) => {
   try {
     const { body } = req;
-    const { taskID, userID } = body;
+    const { taskID, username } = body;
     let result = await client
       .db("ar")
       .collection("assigns")
       .updateOne(
-        { taskID: taskID, userID: userID },
+        {
+          taskID: taskID,
+          username: username,
+          isCompleted: false,
+          isValid: true,
+        },
         {
           $set: {
             isValid: false,
@@ -349,7 +363,7 @@ router.put("/dismiss", async (req, res) => {
       .db("ar")
       .collection("users")
       .updateOne(
-        { _id: ObjectID(userID) },
+        { username: username },
         {
           $set: {
             status: "idle",
