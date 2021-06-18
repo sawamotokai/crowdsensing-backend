@@ -118,6 +118,81 @@ router.put("/wait_for_task", async (req, res) => {
   }
 });
 
+router.get("/currentTask", async (req, res) => {
+  try {
+    const { query } = req;
+    const { username } = query;
+    // get user id from the username
+    const user = await client
+      .db("ar")
+      .collection("users")
+      .findOne({ username: username });
+    const userID = String(user._id);
+
+    // get task id of the assigned task
+    const q = {
+      userID: userID,
+      isCompleted: false,
+      isValid: true,
+    };
+    const assignment = await client.db("ar").collection("assigns").findOne(q);
+    if (!assignment) {
+      return res.status(400).json({
+        msg: "No tasks were found.",
+      });
+    }
+    const { taskID } = assignment;
+    var task = await client
+      .db("ar")
+      .collection("tasks")
+      .aggregate([
+        { $match: { _id: ObjectID(taskID) } },
+        {
+          $lookup: {
+            from: "trashbins",
+            let: { trashbinId: "$trashbinId" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ["$$trashbinId", { $toString: "$_id" }] },
+                },
+              },
+            ],
+            as: "trashbin",
+          },
+        },
+        { $unwind: "$trashbin" },
+        {
+          $lookup: {
+            from: "rewards",
+            let: { rewardId: "$rewardId" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: [{ $toString: "$_id" }, "$$rewardId"] },
+                },
+              },
+            ],
+            as: "reward",
+          },
+        },
+        { $unwind: "$reward" },
+      ])
+      .toArray()
+      .catch((err) => {
+        throw err;
+      });
+    return res.status(200).json({
+      data: {
+        task: task[0],
+      },
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(400).json(e);
+  }
+});
+
 router.post("/new", async (req, res) => {
   try {
     const { body } = req;

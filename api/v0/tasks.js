@@ -62,15 +62,14 @@ router.get("/", async (req, res) => {
       .catch((err) => {
         throw err;
       });
-  } catch (e) {
-    console.error(e);
-    return res.status(400).json(e);
-  } finally {
     return res.status(200).json({
       data: {
         task: ret[0],
       },
     });
+  } catch (e) {
+    console.error(e);
+    return res.status(400).json(e);
   }
 });
 
@@ -221,23 +220,23 @@ router.get("/near", async (req, res) => {
  */
 router.post("/assign", async (req, res) => {
   try {
-    const { body } = req;
+    const { userID, taskID } = req.body;
     const doc = {
-      userID: body.userID,
-      taskID: body.taskID,
+      userID: userID,
+      taskID: taskID,
       isCompleted: false,
       assignedTime: new Date(),
       completedTime: null,
       isValid: true,
-      // TODO: don't hardcode timeLimit
       timeLimit: 10,
+      // TODO: don't hardcode timeLimit
     };
     let result = await client.db("ar").collection("assigns").insertOne(doc);
     let result2 = await client
       .db("ar")
       .collection("tasks")
       .updateOne(
-        { _id: ObjectID(body.taskID) },
+        { _id: ObjectID(taskID) },
         {
           $set: {
             lastUpdateTime: new Date(),
@@ -248,7 +247,7 @@ router.post("/assign", async (req, res) => {
       .db("ar")
       .collection("users")
       .updateOne(
-        { _id: ObjectID(body.userID) },
+        { _id: ObjectID(userID) },
         {
           $set: {
             status: "busy",
