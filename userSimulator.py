@@ -14,9 +14,12 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-def put_request(url, data):
+def send_request(url, data, method):
     headers = {"content-type": "application/json"}
-    res = requests.put(url, data=json.dumps(data), headers=headers)
+    if method == 'PUT':
+        res = requests.put(url, data=json.dumps(data), headers=headers)
+    if method == 'POST':
+        res = requests.post(url, data=json.dumps(data), headers=headers)
     return res
 
 
@@ -81,7 +84,8 @@ class Service:
             if rand > 0.3 and self.status == "idle":
                 self.status = 'waiting'
                 url = f"{BASE_URL}/users/wait_for_task"
-                res = put_request(url, data={"username": self.username})
+                res = send_request(
+                    url, data={"username": self.username}, method='PUT')
                 print(res.content)
             self.ue.walk()
             self.updateLocation()
@@ -101,7 +105,7 @@ class Service:
                 'lat': self.ue.lat,
                 'lng': self.ue.lng,
             }
-            res = put_request(url, data=data)
+            res = send_request(url, data=data, method='PUT')
             print(res.content)
         except Exception as e:
             print(e)
@@ -115,9 +119,9 @@ class Service:
             "username": self.username
         }
         try:
-            requests.post(url, data={
+            send_request(url, data={
                 "username": self.username
-            })
+            }, method='POST')
         except Exception as e:
             print(e)
             exit(1)
@@ -152,7 +156,7 @@ class Service:
                 "taskID": task['_id'],
                 "username": self.username
             }
-            res = put_request(url, data=data)
+            res = send_request(url, data=data, method='PUT')
             print(res.content)
         except Exception as e:
             print(e)
@@ -166,7 +170,7 @@ class Service:
                 "taskID": task['_id'],
                 "username": self.username
             }
-            res = put_request(url, data=data)
+            res = send_request(url, data=data, method='PUT')
             print(res.content)
         except Exception as e:
             print(e)

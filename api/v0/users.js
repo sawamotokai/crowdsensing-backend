@@ -202,7 +202,7 @@ router.post("/", async (req, res) => {
       });
     }
     body.avgWalkingSpeed = 1;
-    body.currentStatus = "unknown";
+    body.status = "unknown";
     const result = await client.db("ar").collection("users").insertOne(body);
     return res.status(200).json({
       msg: `New users entry was created with the following id: ${result.insertedId}`,
