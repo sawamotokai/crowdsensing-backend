@@ -266,13 +266,14 @@ router.post("/assign", async (req, res) => {
 router.put("/complete", async (req, res) => {
   try {
     const { body } = req;
-    const { taskID, username } = body;
-    const assignment = await client.db("ar").collection("assigns").findOne({
-      taskID: taskID,
-      username: username,
-      isCompleted: false,
-      isValid: true,
-    });
+    const { assignmentID } = body;
+    const assignment = await client
+      .db("ar")
+      .collection("assigns")
+      .findOne({
+        _id: ObjectID(assignmentID),
+      });
+    const { taskID } = assignment;
     const { assignedTime, isValid } = assignment;
     const timeElapsed = new Date() - assignedTime;
     const task = await client
@@ -282,7 +283,7 @@ router.put("/complete", async (req, res) => {
         _id: ObjectID(taskID),
       });
     const { timeLimit } = task;
-    if (timeElapsed / 60000 >= timeLimit) {
+    if (timeElapsed / 1000 >= timeLimit * 60) {
       return res.status(400).json({
         msg: "Time limit exceeded for the task.",
       });
@@ -297,10 +298,7 @@ router.put("/complete", async (req, res) => {
       .collection("assigns")
       .updateOne(
         {
-          taskID: taskID,
-          username: username,
-          isCompleted: false,
-          isValid: true,
+          _id: ObjectID(assignmentID),
         },
         {
           $set: {

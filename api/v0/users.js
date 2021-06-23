@@ -120,68 +120,88 @@ router.put("/wait_for_task", async (req, res) => {
   }
 });
 
-router.get("/currentTask", async (req, res) => {
+router.get("/currentTasks", async (req, res) => {
   try {
     const { query } = req;
     const { username } = query;
-    // get task id of the assigned task
-    const q = {
-      username: username,
-      isCompleted: false,
-      isValid: true,
-    };
-    const assignment = await client.db("ar").collection("assigns").findOne(q);
-    if (!assignment) {
-      return res.status(400).json({
-        msg: "No tasks were found.",
-      });
-    }
-    const { taskID } = assignment;
-    var task = await client
+    var ret = await client
       .db("ar")
-      .collection("tasks")
+      .collection("assigns")
       .aggregate([
-        { $match: { _id: ObjectID(taskID) } },
+        { $match: { username: username, isCompleted: false, isValid: true } },
         {
           $lookup: {
-            from: "trashbins",
-            let: { trashbinId: "$trashbinId" },
+            from: "tasks",
+            let: { taskID: "$taskID" },
             pipeline: [
               {
                 $match: {
-                  $expr: { $eq: ["$$trashbinId", { $toString: "$_id" }] },
+                  $expr: { $eq: ["$$taskID", { $toString: "$_id" }] },
                 },
               },
-            ],
-            as: "trashbin",
-          },
-        },
-        { $unwind: "$trashbin" },
-        {
-          $lookup: {
-            from: "rewards",
-            let: { rewardId: "$rewardId" },
-            pipeline: [
               {
-                $match: {
-                  $expr: { $eq: [{ $toString: "$_id" }, "$$rewardId"] },
+                $lookup: {
+                  from: "trashbins",
+                  let: { trashbinId: "$trashbinId" },
+                  pipeline: [
+                    {
+                      $match: {
+                        $expr: { $eq: ["$$trashbinId", { $toString: "$_id" }] },
+                      },
+                    },
+                  ],
+                  as: "trashbin",
                 },
               },
+              { $unwind: "$trashbin" },
+              {
+                $lookup: {
+                  from: "rewards",
+                  let: { rewardId: "$rewardId" },
+                  pipeline: [
+                    {
+                      $match: {
+                        $expr: { $eq: [{ $toString: "$_id" }, "$$rewardId"] },
+                      },
+                    },
+                  ],
+                  as: "reward",
+                },
+              },
+              { $unwind: "$reward" },
             ],
-            as: "reward",
+            as: "task",
           },
         },
-        { $unwind: "$reward" },
+        { $unwind: "$task" },
       ])
       .toArray()
       .catch((err) => {
         throw err;
       });
-    return res.status(200).json({
-      data: {
-        task: task[0],
-      },
+    ret = ret.filter((obj) => {
+      const { assignedTime, timeLimit } = obj;
+      const timeElapsed = new Date() - assignedTime;
+      return timeElapsed / 1000 <= timeLimit * 60;
     });
+    if (ret.length) {
+      return res.status(200).json({
+        assignments: ret,
+      });
+    } else {
+      await client
+        .db("ar")
+        .collection("users")
+        .updateOne(
+          { username: username },
+          {
+            $set: {
+              status: "idle",
+            },
+          }
+        );
+      return res.status(404).json({ msg: "Task not found." });
+    }
   } catch (e) {
     console.error(e);
     return res.status(400).json(e);
@@ -202,7 +222,11 @@ router.post("/", async (req, res) => {
       });
     }
     body.avgWalkingSpeed = 1;
-    body.status = "unknown";
+    body.status = "idle";
+    body.location = {
+      lat: 49.26252990000112,
+      lng: -123.25006520184665,
+    };
     const result = await client.db("ar").collection("users").insertOne(body);
     return res.status(200).json({
       msg: `New users entry was created with the following id: ${result.insertedId}`,

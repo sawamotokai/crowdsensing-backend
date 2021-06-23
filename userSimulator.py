@@ -6,6 +6,8 @@ import math
 import argparse
 import time
 import json
+import datetime
+import dateutil
 
 parser = argparse.ArgumentParser(description='Process some user settings.')
 parser.add_argument(
@@ -23,20 +25,99 @@ def send_request(url, data, method):
     return res
 
 
-class ue_rand_walk ():
-    def __init__(self, north, east, south, west, x_step, y_step):
-        self.nb = north
-        self.eb = east
-        self.sb = south
-        self.wb = west
+def timeLimitExceeded(a):
+    assignedTime = dateutil.parser.isoparse(a['assignedTime'])
+    dt = datetime.datetime.now(datetime.timezone.utc)
+    now = dt.replace(tzinfo=datetime.timezone.utc)
+    if assignedTime + datetime.timedelta(minutes=a['timeLimit']) < now:
+        return True
+    return False
+
+# cost = lambda * dist / AoI
+
+
+# global
+BASE_URL = "http://localhost:3000/api/v0"
+# BASE_URL = "https://crowd-sensing.herokuapp.com/api/v0"
+nb = 49.27024149430249
+sb = 49.25752305948695
+wb = -123.25382384052033
+eb = -123.24365280903588
+x_step = 0.00015
+y_step = 0.00015
+
+
+class Service:
+    def __init__(self, num_timeslots, username=""):
+        super().__init__()
+        if username == "":
+            self.createUser()
+        else:
+            self.username = username
+        self.initStatus()
+        self.num_timeslots = num_timeslots
+        self.nb = nb
+        self.eb = eb
+        self.sb = sb
+        self.wb = wb
         self.x_step = x_step
         self.y_step = y_step
-        self.lng = -123.25006520184665
-        self.lat = 49.26252990000112
+        self.task = None
+
+    def run(self):
+        for _ in range(self.num_timeslots):
+            print(self.status)
+            rand = random.random()
+            if rand > 0.3 and self.status == "idle":
+                self.status = 'waiting'
+                url = f"{BASE_URL}/users/wait_for_task"
+                res = send_request(
+                    url, data={"username": self.username}, method='PUT')
+                print(res.content)
+            if self.status == 'busy':
+                if self.task is None:
+                    self.task = self.pullTask()
+                if self.task is None:
+                    self.status = 'idle'
+                elif self.isClose2Task():
+                    self.completeTask()
+            self.walk()
+            self.updateLocation()
+            if self.status == "waiting":
+                self.task = self.pullTask()
+                if self.task is not None:
+                    self.decideTask()
+
+            time.sleep(5)
+
+    def initStatus(self):
+        try:
+            url = f'{BASE_URL}/users?username={self.username}'
+            user = requests.get(url).json()
+            self.status = user['data']['user']['status']
+            self.lat = user['data']['user']['location']['lat']
+            self.lng = user['data']['user']['location']['lng']
+        except Exception as e:
+            print(e)
+            self.status = 'idle'
+
+    def isClose2Task(self):
+        dist = (self.lat - self.task['trashbin']['location']['lat']) ** 2 + \
+            (self.lng - self.task['trashbin']['location']['lng']) ** 2
+        print('distance to the object: ', dist)
+        # TODO: set the threshold
+        return dist <= 4e-6
+        return False
 
     def walk(self):
+        direction = 0
+        if self.status == 'busy':
+            dx = self.task['trashbin']['location']['lng'] - self.lng
+            dy = self.task['trashbin']['location']['lat'] - self.lat
+            direction = math.atan2(dy, dx)
+        else:
+            direction = random.random() * 2 * math.pi
         speed = 2.0*random.random()+1.0
-        direction = random.random() * 2 * math.pi
         dx = math.cos(direction) * speed * self.x_step
         dy = math.sin(direction) * speed * self.y_step
         nx = self.lng + dx
@@ -51,59 +132,13 @@ class ue_rand_walk ():
         self.lat = ny
         return (self.lng, self.lat, speed)
 
-
-# global
-BASE_URL = "http://localhost:3000/api/v0"
-# BASE_URL = "https://crowd-sensing.herokuapp.com/api/v0"
-nb = 49.27024149430249
-sb = 49.25752305948695
-wb = -123.25382384052033
-eb = -123.24365280903588
-x_step = 0.00015
-y_step = 0.00015
-
-
-def sayhi():
-    print('hi')
-
-
-class Service:
-    def __init__(self, num_timeslots, username=""):
-        super().__init__()
-        self.username = username
-        self.num_timeslots = num_timeslots
-        self.status = 'idle'
-        self.ue = ue_rand_walk(north=nb, east=eb, south=sb, west=wb,
-                               x_step=x_step, y_step=y_step)
-
-    def run(self):
-        if self.username == "":
-            self.createUser()
-        for _ in range(self.num_timeslots):
-            rand = random.random()
-            if rand > 0.3 and self.status == "idle":
-                self.status = 'waiting'
-                url = f"{BASE_URL}/users/wait_for_task"
-                res = send_request(
-                    url, data={"username": self.username}, method='PUT')
-                print(res.content)
-            self.ue.walk()
-            self.updateLocation()
-            print(self.status)
-            if self.status == "waiting":
-                task = self.pullTask()
-                if task is not None:
-                    # TODO: if Task time limit is exceeded: continue
-                    self.decideTask(task)
-            time.sleep(5)
-
     def updateLocation(self):
         try:
             url = f'{BASE_URL}/users/location'
             data = {
                 'username': self.username,
-                'lat': self.ue.lat,
-                'lng': self.ue.lng,
+                'lat': self.lat,
+                'lng': self.lng,
             }
             res = send_request(url, data=data, method='PUT')
             print(res.content)
@@ -119,59 +154,70 @@ class Service:
             "username": self.username
         }
         try:
-            send_request(url, data={
+            res = send_request(url, data={
                 "username": self.username
             }, method='POST')
+            if res.status_code == 400:
+                print('Exisiting User')
+            if res.status_code == 200:
+                print("New User")
         except Exception as e:
             print(e)
             exit(1)
 
     def pullTask(self):
         try:
-            url = f'{BASE_URL}/users/currentTask?username={self.username}'
+            url = f'{BASE_URL}/users/currentTasks?username={self.username}'
             res = requests.get(url)
             if res.status_code == 200:
-                task = res.json()['data']['task']
+                print("Task found")
+                assignment = res.json()['assignments'][0]
+                task = assignment['task']
+                self.assignmentID = assignment['_id']
                 return task
-            elif res.status_code == 400:
+            elif res.status_code == 404:
                 print("TASK NOT FOUND")
+                return None
+            elif res.status_code == 400:
+                print("Error")
                 return None
         except Exception as e:
             print(e)
             exit(1)
 
-    def decideTask(self, task):
+    def decideTask(self):
         rand = random.random()
         if rand > 0.3:
-            self.completeTask(task)
-        else:
-            self.dismissTask(task)
-        self.status = "idle"
-
-    def completeTask(self, task):
-        try:
             print("completing the task")
+            self.status = 'busy'
+        else:
+            self.dismissTask()
+
+    def completeTask(self):
+        print('completed the task')
+        try:
             url = f'{BASE_URL}/tasks/complete'
             data = {
-                "taskID": task['_id'],
-                "username": self.username
+                'assignmentID': self.assignmentID,
             }
             res = send_request(url, data=data, method='PUT')
             print(res.content)
+            self.status = 'idle'
         except Exception as e:
             print(e)
             exit(1)
 
-    def dismissTask(self, task):
+    def dismissTask(self):
         try:
             print("dismissing the task")
             url = f'{BASE_URL}/tasks/dismiss'
             data = {
-                "taskID": task['_id'],
+                "taskID": self.task['_id'],
                 "username": self.username
             }
             res = send_request(url, data=data, method='PUT')
             print(res.content)
+            self.status = 'idle'
         except Exception as e:
             print(e)
             exit(1)
@@ -185,16 +231,3 @@ program that prints random walks
 
 service = Service(username=args.username, num_timeslots=10)
 service.run()
-
-
-# x_data_plot = []
-# y_data_plot = []
-
-# for i in range(1000):  # change the number for the amount of iterations
-#     (x, y, z) = ue.walk()  # returns x, y, and speed
-#     x_data_plot.append(x)
-#     y_data_plot.append(y)
-
-# plt.axis([wb, eb, sb, nb])
-# plt.plot(x_data_plot, y_data_plot)
-# plt.savefig('plot.png')
