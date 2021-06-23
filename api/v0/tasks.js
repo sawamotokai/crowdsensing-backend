@@ -340,16 +340,18 @@ router.put("/complete", async (req, res) => {
 router.put("/dismiss", async (req, res) => {
   try {
     const { body } = req;
-    const { taskID, username } = body;
+    const { assignmentID } = body;
+    const assignment = await client
+      .db("ar")
+      .collection("assigns")
+      .findOne({ _id: ObjectID(assignmentID) });
+
     let result = await client
       .db("ar")
       .collection("assigns")
       .updateOne(
         {
-          taskID: taskID,
-          username: username,
-          isCompleted: false,
-          isValid: true,
+          assignmentID: assignmentID,
         },
         {
           $set: {
@@ -361,7 +363,7 @@ router.put("/dismiss", async (req, res) => {
       .db("ar")
       .collection("users")
       .updateOne(
-        { username: username },
+        { username: assignment.username },
         {
           $set: {
             status: "idle",

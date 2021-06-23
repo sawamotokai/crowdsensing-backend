@@ -212,8 +212,7 @@ class Service:
             print("dismissing the task")
             url = f'{BASE_URL}/tasks/dismiss'
             data = {
-                "taskID": self.task['_id'],
-                "username": self.username
+                'assignmentID': self.assignmentID
             }
             res = send_request(url, data=data, method='PUT')
             print(res.content)
