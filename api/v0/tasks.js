@@ -273,7 +273,7 @@ router.put("/complete", async (req, res) => {
       .findOne({
         _id: ObjectID(assignmentID),
       });
-    const { taskID } = assignment;
+    const { taskID, username } = assignment;
     const { assignedTime, isValid } = assignment;
     const timeElapsed = new Date() - assignedTime;
     const task = await client
